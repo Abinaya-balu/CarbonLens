@@ -308,5 +308,9 @@ db.achievements.createIndex({
 db.achievements.createIndex({
   achievedAt: -1
 });
-```
+```<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/c045781c-bb5b-47dd-8552-4be95e95f0ac" />
+<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/2064c513-cecc-44c3-8164-257f00b4310e" /><img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/3102ba4a-ee84-4e80-8bdd-d3b7bc55a5df" />
+
+
+
 
