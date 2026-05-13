@@ -100,4 +100,213 @@ All responses follow:
 
 - Mock integrations can be toggled in **Profile**; use **Dashboard → Sync mock APIs** to ingest.
 - Nudges are **free by default** (heuristics). OpenAI is optional.
+# CarbonLens — MongoDB Collection Design
+
+## 1. Users Collection (`users`)
+
+| Field Name      | BSON Type | Required | Index Suggestion    | Description             | Example Value            |
+| ----------------| ----------| -------- | ------------------- | ----------------------- | ------------------------ |
+| `_id`           | ObjectId  | Yes      | PK                  | Unique user identifier  | `ObjectId("665fa12ab9")` |
+| `name`          | String    | Yes      | —                   | Full name of user       | `"Abinaya"`              |
+| `email`         | String    | Yes      | Unique Index        | Login email             | `"demo@carbonlens.in"`   |
+| `passwordHash`  | String    | Yes      | —                   | Encrypted password hash | `"$2b$10$abc..."`        |
+| `region`        | String    | No       | Index (optional)    | User region/location    | `"IN-TN"`                |
+| `dailyTargetKg` | Number    | No       | —                   | Daily CO₂ goal          | `5.5`                    |
+| `monthlyGoalKg` | Number    | No       | —                   | Monthly emission goal   | `120`                    |
+| `createdAt`     | ISODate   | Yes      | Index (`createdAt`) | Creation timestamp      | `ISODate("2026-05-13")`  |
+| `updatedAt`     | ISODate   | Yes      | —                   | Last update timestamp   | `ISODate("2026-05-13")`  |
+
+### Suggested Indexes
+
+```js
+db.users.createIndex({ email: 1 }, { unique: true });
+
+db.users.createIndex({ createdAt: -1 });
+```
+
+---
+
+## 2. Activities Collection (`activities`)
+
+| Field Name         | BSON Type | Required | Index Suggestion | Description               | Example Value                      |
+| ------------------ | ----------| -------- | ---------------- | ------------------------- | ---------------------------------- |
+| `_id`              | ObjectId  | Yes      | PK               | Activity identifier       | `ObjectId("a12")`                  |
+| `userId`           | ObjectId  | Yes      | Compound Index   | FK → users                | `ObjectId("u12")`                  |
+| `source`           | String    | Yes      | Compound Index   | Data source               | `"manual"`                         |
+| `startTime`        | ISODate   | Yes      | Compound Index   | Activity start            | `ISODate("2026-05-13T08:00")`      |
+| `endTime`          | ISODate   | No       | —                | Activity end              | `ISODate("2026-05-13T09:00")`      |
+| `type`             | String    | Yes      | —                | Activity category         | `"transport"`                      |
+| `details`          | Object    | Yes      | —                | Dynamic activity metadata | `{ distanceKm: 12, mode: "bike" }` |
+| `emissionFactorId` | ObjectId  | No       | Index            | FK → emissionfactors      | `ObjectId("ef1")`                  |
+| `createdAt`        | ISODate   | Yes      | Index            | Record timestamp          | `ISODate("2026-05-13")`            |
+
+### Suggested Compound Indexes
+
+```js
+db.activities.createIndex({ userId: 1, startTime: -1 });
+
+db.activities.createIndex({ userId: 1, source: 1 });
+```
+
+---
+
+## 3. CarbonScores Collection (`carbonscores`)
+
+| Field Name   | BSON Type | Required | Index Suggestion      | Description         | Example Value                   |
+| -------------| ----------| -------- | --------------------- | ------------------- | ------------------------------- |
+| `_id`        | ObjectId  | Yes      | PK                    | Score record ID     | `ObjectId("cs1")`               |
+| `userId`     | ObjectId  | Yes      | Unique Compound Index | FK → users          | `ObjectId("u12")`               |
+| `date`       | Date      | Yes      | Unique Compound Index | Daily score date    | `"2026-05-13"`                  |
+| `totalKgCO2` | Number    | Yes      | —                     | Total carbon output | `4.3`                           |
+| `breakdown`  | Object    | Yes      | —                     | Emission split      | `{ transport:2.1, energy:1.5 }` |
+| `createdAt`  | ISODate   | Yes      | —                     | Created timestamp   | `ISODate("2026-05-13")`         |
+
+### Suggested Index
+
+```js
+db.carbonscores.createIndex(
+  { userId: 1, date: 1 },
+  { unique: true }
+);
+```
+
+---
+
+## 4. EmissionFactors Collection (`emissionfactors`)
+
+| Field Name   | BSON Type | Required | Index Suggestion | Description       | Example Value     |
+| -------------| ----------| -------- | ---------------- | ----------------- | ----------------- |
+| `_id`        | ObjectId  | Yes      | PK               | Factor identifier | `ObjectId("ef1")` |
+| `region`     | String    | Yes      | Compound Index   | Region code       | `"IN"`            |
+| `sourceType` | String    | Yes      | Compound Index   | Factor category   | `"electricity"`   |
+| `unit`       | String    | Yes      | —                | Measurement unit  | `"kWh"`           |
+| `factor`     | Number    | Yes      | —                | CO₂ factor value  | `0.82`            |
+
+### Suggested Index
+
+```js
+db.emissionfactors.createIndex({
+  region: 1,
+  sourceType: 1
+});
+```
+
+---
+
+## 5. Nudges Collection (`nudges`)
+
+| Field Name          | BSON Type | Required | Index Suggestion | Description        | Example Value                     |
+| ------------------- | ----------| -------- | ---------------- | ------------------ | --------------------------------- |
+| `_id`               | ObjectId  | Yes      | PK               | Nudge identifier   | `ObjectId("n1")`                  |
+| `userId`            | ObjectId  | Yes      | Compound Index   | FK → users         | `ObjectId("u12")`                 |
+| `relatedActivityId` | ObjectId  | No       | Index            | Related activity   | `ObjectId("a1")`                  |
+| `message`           | String    | Yes      | —                | Nudge content      | `"Try public transport tomorrow"` |
+| `type`              | String    | Yes      | —                | Nudge category     | `"transport"`                     |
+| `read`              | Boolean   | Yes      | Compound Index   | Read state         | `false`                           |
+| `acted`             | Boolean   | Yes      | —                | Whether user acted | `true`                            |
+| `createdAt`         | ISODate   | Yes      | Compound Index   | Timestamp          | `ISODate("2026-05-13")`           |
+
+### Suggested Index
+
+```js
+db.nudges.createIndex({
+  userId: 1,
+  read: 1,
+  createdAt: -1
+});
+```
+
+---
+
+## 6. PushSubscriptions Collection (`pushsubscriptions`)
+
+| Field Name  | BSON Type | Required | Index Suggestion | Description       | Example Value                      |
+| ------------| ----------| -------- | ---------------- | ----------------- | ---------------------------------- |
+| `_id`       | ObjectId  | Yes      | PK               | Subscription ID   | `ObjectId("ps1")`                  |
+| `userId`    | ObjectId  | Yes      | Index            | FK → users        | `ObjectId("u12")`                  |
+| `endpoint`  | String    | Yes      | Unique Index     | Push endpoint     | `"https://fcm.googleapis.com/..."` |
+| `keys`      | Object    | Yes      | —                | Auth keys         | `{ p256dh:"abc", auth:"xyz" }`     |
+| `createdAt` | ISODate   | Yes      | —                | Created timestamp | `ISODate("2026-05-13")`            |
+
+### Suggested Index
+
+```js
+db.pushsubscriptions.createIndex(
+  { endpoint: 1 },
+  { unique: true }
+);
+
+db.pushsubscriptions.createIndex({
+  userId: 1
+});
+```
+
+---
+
+## 7. Integrations Collection (`integrations`)
+
+| Field Name  | BSON Type | Required | Index Suggestion | Description        | Example Value           |
+| ------------| ----------| -------- | ---------------- | ------------------ | ----------------------- |
+| `_id`       | ObjectId  | Yes      | PK               | Integration ID     | `ObjectId("i1")`        |
+| `userId`    | ObjectId  | Yes      | Compound Index   | FK → users         | `ObjectId("u12")`       |
+| `provider`  | String    | Yes      | Compound Index   | Provider name      | `"google-maps"`         |
+| `enabled`   | Boolean   | Yes      | —                | Enabled state      | `true`                  |
+| `config`    | Object    | No       | —                | Integration config | `{ syncEveryHours:6 }`  |
+| `createdAt` | ISODate   | Yes      | —                | Timestamp          | `ISODate("2026-05-13")` |
+
+### Suggested Index
+
+```js
+db.integrations.createIndex({
+  userId: 1,
+  provider: 1
+});
+```
+
+---
+
+## 8. JobRuns Collection (`jobruns`)
+
+| Field Name         | BSON Type | Required | Index Suggestion | Description      | Example Value                 |
+| ------------------ | ----------| -------- | ---------------- | ---------------- | ----------------------------- |
+| `_id`              | ObjectId  | Yes      | PK               | Job execution ID | `ObjectId("j1")`              |
+| `jobType`          | String    | Yes      | Compound Index   | Batch job name   | `"score-computation"`         |
+| `startedAt`        | ISODate   | Yes      | Compound Index   | Start timestamp  | `ISODate("2026-05-13T06:00")` |
+| `finishedAt`       | ISODate   | No       | —                | Finish timestamp | `ISODate("2026-05-13T06:02")` |
+| `status`           | String    | Yes      | —                | Job state        | `"success"`                   |
+| `recordsProcessed` | Number    | No       | —                | Count processed  | `1450`                        |
+| `error`            | String    | No       | —                | Error message    | `"timeout"`                   |
+
+### Suggested Index
+
+```js
+db.jobruns.createIndex({
+  jobType: 1,
+  startedAt: -1
+});
+```
+
+---
+
+## 9. Achievements Collection (`achievements`)
+
+| Field Name    | BSON Type | Required | Index Suggestion | Description         | Example Value           |
+| --------------| ----------| -------- | ---------------- | ------------------- | ----------------------- |
+| `_id`         | ObjectId  | Yes      | PK               | Achievement ID      | `ObjectId("ach1")`      |
+| `userId`      | ObjectId  | Yes      | Index            | FK → users          | `ObjectId("u12")`       |
+| `name`        | String    | Yes      | —                | Achievement title   | `"Eco Warrior"`         |
+| `description` | String    | Yes      | —                | Achievement details | `"Reduced 30kg CO₂"`    |
+| `achievedAt`  | ISODate   | Yes      | Index            | Earned timestamp    | `ISODate("2026-05-13")` |
+
+### Suggested Index
+
+```js
+db.achievements.createIndex({
+  userId: 1
+});
+
+db.achievements.createIndex({
+  achievedAt: -1
+});
+```
 
