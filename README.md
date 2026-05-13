@@ -308,8 +308,12 @@ db.achievements.createIndex({
 db.achievements.createIndex({
   achievedAt: -1
 });
-```<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/c045781c-bb5b-47dd-8552-4be95e95f0ac" />
-<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/2064c513-cecc-44c3-8164-257f00b4310e" /><img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/3102ba4a-ee84-4e80-8bdd-d3b7bc55a5df" />
+```
+<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/6f58ec70-fa47-4455-a544-3ffb7f8e80e2" />
+<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/ebadfb2d-3770-4385-be64-32308da93027" />
+<img width="1536" height="1024" alt="image" src="https://github.com/user-attachments/assets/f3c2c7e4-ce35-4256-a4ce-f631d1a80e81" />
+
+
 
 
 
