@@ -1,7 +1,7 @@
 # CarbonLens
 
 **CarbonLens** is a passive carbon footprint tracker that ingests daily activity data (mock Google Maps commute + mock smart meter energy + manual input fallback), computes a daily CO₂ score, and generates nudges to help reduce emissions.
- - demo: https://carbonlens-1-aznb.onrender.com/dashboard
+ - demo: https://carbonlens-1-aznb.onrender.com
 ## Tech
 
 - **Client**: React 18 + Vite + TailwindCSS + Recharts + Axios + React Router v6
